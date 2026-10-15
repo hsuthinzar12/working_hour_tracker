@@ -1,0 +1,21 @@
+create extension if not exists pgcrypto;
+
+create table if not exists public.time_entries (
+  id uuid primary key default gen_random_uuid(),
+  worker_id text not null,
+  worker_name text not null,
+  work_date date not null,
+  working_place text not null,
+  project text not null check (project in ('Kingdao', 'Creative', 'Namhong')),
+  working_hours numeric(4,1) not null check (working_hours > 0 and working_hours <= 24),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists time_entries_date_idx on public.time_entries(work_date desc);
+create index if not exists time_entries_worker_idx on public.time_entries(worker_id);
+create index if not exists time_entries_project_idx on public.time_entries(project);
+
+alter table public.time_entries enable row level security;
+
+-- No anon/authenticated policies on purpose.
+-- The browser never receives the service role key; Next.js server routes access this table.
