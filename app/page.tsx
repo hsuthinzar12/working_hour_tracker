@@ -14,6 +14,8 @@ export default function WorkerPage(){
   const [date,setDate]=useState(todayIso())
   const [place,setPlace]=useState('')
   const [project,setProject]=useState('Kingdao')
+  const [workingPlaces,setWorkingPlaces]=useState<{id:string;name:string}[]>([])
+  const [placesLoading,setPlacesLoading]=useState(false)
   const [hours,setHours]=useState<number|string>(8)
   const [month,setMonth]=useState(todayIso().slice(0,7))
   const [history,setHistory]=useState<Entry[]>([])
@@ -55,6 +57,32 @@ export default function WorkerPage(){
       setLoading(false)
     }
   }
+  useEffect(()=>{
+  async function loadWorkingPlaces(){
+    setPlacesLoading(true)
+    setPlace('')
+
+    try {
+      const r = await fetch(
+        `/api/working-places?project=${encodeURIComponent(project)}`
+      )
+
+      const d = await r.json()
+
+      if (!r.ok) {
+        setWorkingPlaces([])
+        return
+      }
+
+      setWorkingPlaces(d.places || [])
+    } catch {
+      setWorkingPlaces([])
+    } finally {
+      setPlacesLoading(false)
+    }
+  }
+  loadWorkingPlaces()
+  },[project])
 
   return <main className="worker-shell">
     {view==='submit' && <>
@@ -63,8 +91,27 @@ export default function WorkerPage(){
         <div className="card worker-card"><div className="avatar">👷</div><div><b>{profile.id?`${profile.id} • ${profile.name}`:'Set worker profile'}</b><span>Construction Worker</span></div><button className="link-btn" onClick={()=>setView('profile')}>Edit</button></div>
         <div className="card form-card">
           <label>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)} />
-          <label>Working Place</label><input placeholder="e.g. Site A / Office A" value={place} onChange={e=>setPlace(e.target.value)} />
           <label>Project</label><div className="choice-grid three">{projects.map(p=><button key={p} className={project===p?'choice active':'choice'} onClick={()=>setProject(p)}>{p}</button>)}</div>
+          <label>Working Place</label>
+          <select
+            value={place}
+            onChange={(e)=>setPlace(e.target.value)}
+            disabled={placesLoading || workingPlaces.length === 0}
+            required
+          >
+          <option value="">
+            {placesLoading
+              ? 'Loading working places...'
+              : workingPlaces.length === 0
+              ? 'No working places available'
+              : 'Select working place'}
+          </option>
+          {workingPlaces.map((item)=>(
+            <option key={item.id} value={item.name}>
+              {item.name}
+            </option>
+          ))}
+          </select>
           <label>Working Hours</label><div className="choice-grid four">{quickHours.map(h=><button key={h} className={Number(hours)===h?'choice active':'choice'} onClick={()=>setHours(h)}>{h}</button>)}</div>
           <input className="hours-input" type="number" inputMode="decimal" min="0.5" max="24" step="0.5" placeholder="Other hours" value={typeof hours==='string'?hours:''} onChange={e=>setHours(e.target.value)} />
           {message&&<p className="error">{message}</p>}
